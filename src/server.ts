@@ -6,22 +6,24 @@ const wss = new WebSocketServer({ port: Number(PORT) });
 
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
 
-const clients = new Map(); // Map kullanarak istemcileri IP ile eşleştiriyoruz.
+const clients = new Map<WebSocket, string>(); // Map ile istemcileri IP'ye bağlıyoruz.
 
-wss.on("connection", (ws, req) => {
+wss.on("connection", (ws: WebSocket, req) => {
     const clientIP = req.socket.remoteAddress?.replace(/^.*:/, '') || "Bilinmeyen IP";
-    
+
     clients.set(ws, clientIP);
     console.log(`🚀 Yeni istemci bağlandı! IP: ${clientIP} (Toplam: ${clients.size})`);
 
-    ws.on("message", (message) => {
-        if (typeof message !== "string" || message.length > 1000) {
+    ws.on("message", (message: WebSocket.Data) => {
+        const msgStr = message.toString(); // Binary olabilme ihtimaline karşı string çeviriyoruz.
+
+        if (typeof msgStr !== "string" || msgStr.length > 1000) {
             console.warn(`⚠️ Geçersiz veya uzun mesaj engellendi! IP: ${clientIP}`);
             return;
         }
-        
-        console.log(`📩 Mesaj alındı (${clientIP}): ${message}`);
-        broadcast(`📢 Yeni mesaj: ${message}`, ws);
+
+        console.log(`📩 Mesaj alındı (${clientIP}): ${msgStr}`);
+        broadcast(`📢 Yeni mesaj: ${msgStr}`, ws);
     });
 
     ws.on("close", () => {
@@ -29,13 +31,13 @@ wss.on("connection", (ws, req) => {
         console.log(`❌ Bağlantı kapandı. (Kalan: ${clients.size})`);
     });
 
-    ws.on("error", (err) => {
+    ws.on("error", (err: Error) => {
         console.error(`⚠️ Hata oluştu: ${err.message}`);
     });
 });
 
 // Tüm istemcilere mesaj gönderen yardımcı fonksiyon
-const broadcast = (message, sender) => {
+const broadcast = (message: string, sender: WebSocket) => {
     for (const [client, ip] of clients) {
         if (client.readyState === WebSocket.OPEN && client !== sender) {
             client.send(message);
@@ -44,7 +46,7 @@ const broadcast = (message, sender) => {
 };
 
 // Sunucu IP adresini belirleme fonksiyonu
-const getServerIP = () => {
+const getServerIP = (): string => {
     const interfaces = os.networkInterfaces();
     for (const iface of Object.values(interfaces)) {
         for (const addr of iface || []) {
