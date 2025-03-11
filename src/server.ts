@@ -1,31 +1,27 @@
 import WebSocket, { WebSocketServer } from "ws";
 import os from "os";
 
-// Fly.io, PORT'u otomatik olarak atar, default olarak 3000 kullanacağız
 const PORT = process.env.PORT || 3000;
-
-// WebSocket Sunucusunu başlat
 const wss = new WebSocketServer({ port: Number(PORT) });
 
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
 
-// Bağlı istemcileri takip etmek için bir Set kullanıyoruz
-const clients = new Set();
+const clients = new Map(); // Map kullanarak istemcileri IP ile eşleştiriyoruz.
 
 wss.on("connection", (ws, req) => {
-    clients.add(ws);
-    const clientIP = req.socket.remoteAddress || "Bilinmeyen IP";
+    const clientIP = req.socket.remoteAddress?.replace(/^.*:/, '') || "Bilinmeyen IP";
+    
+    clients.set(ws, clientIP);
     console.log(`🚀 Yeni istemci bağlandı! IP: ${clientIP} (Toplam: ${clients.size})`);
 
     ws.on("message", (message) => {
-        console.log(`📩 Mesaj alındı (${clientIP}): ${message}`);
-
-        // Gelen mesajı tüm bağlı istemcilere gönder
-        for (const client of clients) {
-            if ((client as WebSocket).readyState === WebSocket.OPEN) {
-                (client as WebSocket).send(`📢 Yeni mesaj: ${message}`);
-            }
+        if (typeof message !== "string" || message.length > 1000) {
+            console.warn(`⚠️ Geçersiz veya uzun mesaj engellendi! IP: ${clientIP}`);
+            return;
         }
+        
+        console.log(`📩 Mesaj alındı (${clientIP}): ${message}`);
+        broadcast(`📢 Yeni mesaj: ${message}`, ws);
     });
 
     ws.on("close", () => {
@@ -38,7 +34,16 @@ wss.on("connection", (ws, req) => {
     });
 });
 
-// Sunucunun IP adresini bulmak için
+// Tüm istemcilere mesaj gönderen yardımcı fonksiyon
+const broadcast = (message, sender) => {
+    for (const [client, ip] of clients) {
+        if (client.readyState === WebSocket.OPEN && client !== sender) {
+            client.send(message);
+        }
+    }
+};
+
+// Sunucu IP adresini belirleme fonksiyonu
 const getServerIP = () => {
     const interfaces = os.networkInterfaces();
     for (const iface of Object.values(interfaces)) {
