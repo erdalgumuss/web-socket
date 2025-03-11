@@ -52,7 +52,9 @@ wss.on("connection", (ws, req) => {
             console.warn(`⚠️ AŞIRI BÜYÜK SES VERİSİ ENGELLENDİ: ${data.length} byte`);
             return;
         }
-        broadcastAudio(data, ws);
+        // Veriyi Base64 formatına çevir
+        const base64Audio = `data:audio/webm;base64,${data.toString("base64")}`;
+        broadcastAudio(base64Audio, ws);
     });
     ws.on("close", () => {
         clients.delete(ws);
@@ -62,7 +64,7 @@ wss.on("connection", (ws, req) => {
         console.error(`⚠️ Hata oluştu: ${err.message}`);
     });
 });
-// 📌 Gelen ses verisini diğer istemcilere ileten fonksiyon
+// 📌 Gelen ses verisini Base64 olarak diğer istemcilere ileten fonksiyon
 const broadcastAudio = (audioData, sender) => {
     for (const client of clients) {
         if (client !== sender && client.readyState === ws_1.default.OPEN) {
