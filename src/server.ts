@@ -1,8 +1,8 @@
 import WebSocket, { WebSocketServer } from "ws";
 import os from "os";
 
-// Render için dinamik PORT belirleme (8080 veya ortam değişkeninden)
-const PORT = process.env.PORT || 8080;
+// Fly.io, PORT'u otomatik olarak atar, default olarak 3000 kullanacağız
+const PORT = process.env.PORT || 3000;
 
 // WebSocket Sunucusunu başlat
 const wss = new WebSocketServer({ port: Number(PORT) });
@@ -15,13 +15,10 @@ let clientCount = 0;
 wss.on("connection", (ws, req) => {
     clientCount++;
     const clientIP = req.socket.remoteAddress || "Bilinmeyen IP";
-
     console.log(`🚀 Yeni istemci bağlandı! IP: ${clientIP} (Toplam: ${clientCount})`);
 
     ws.on("message", (message) => {
         console.log(`📩 Mesaj alındı (${clientIP}): ${message}`);
-
-        // Mesajı geri gönder (ESP32'ye test için)
         ws.send(`✅ Mesajını aldım: ${message}`);
     });
 
