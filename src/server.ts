@@ -9,22 +9,28 @@ const wss = new WebSocketServer({ port: Number(PORT) });
 
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
 
-// Bağlı istemcileri takip etmek için sayaç
-let clientCount = 0;
+// Bağlı istemcileri takip etmek için bir Set kullanıyoruz
+const clients = new Set();
 
 wss.on("connection", (ws, req) => {
-    clientCount++;
+    clients.add(ws);
     const clientIP = req.socket.remoteAddress || "Bilinmeyen IP";
-    console.log(`🚀 Yeni istemci bağlandı! IP: ${clientIP} (Toplam: ${clientCount})`);
+    console.log(`🚀 Yeni istemci bağlandı! IP: ${clientIP} (Toplam: ${clients.size})`);
 
     ws.on("message", (message) => {
         console.log(`📩 Mesaj alındı (${clientIP}): ${message}`);
-        ws.send(`✅ Mesajını aldım: ${message}`);
+
+        // Gelen mesajı tüm bağlı istemcilere gönder
+        for (const client of clients) {
+            if ((client as WebSocket).readyState === WebSocket.OPEN) {
+                (client as WebSocket).send(`📢 Yeni mesaj: ${message}`);
+            }
+        }
     });
 
     ws.on("close", () => {
-        clientCount--;
-        console.log(`❌ Bağlantı kapandı. (Kalan: ${clientCount})`);
+        clients.delete(ws);
+        console.log(`❌ Bağlantı kapandı. (Kalan: ${clients.size})`);
     });
 
     ws.on("error", (err) => {
