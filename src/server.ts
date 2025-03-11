@@ -2,6 +2,7 @@ import WebSocket, { WebSocketServer } from "ws";
 import os from "os";
 
 const PORT = process.env.PORT || 3000;
+const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB ses paketi kabul edilecek
 const wss = new WebSocketServer({ port: Number(PORT) });
 
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
@@ -13,7 +14,13 @@ wss.on("connection", (ws: WebSocket, req) => {
     console.log(`🚀 Yeni istemci bağlandı! (Toplam: ${clients.size})`);
 
     ws.on("message", (data: Buffer) => {
-        console.log(`🎤 Ses verisi alındı. Boyut: ${data.length} byte`);
+        console.log(`🎤 Gelen ses verisi. Boyut: ${data.length} byte`);
+
+        if (data.length > MAX_AUDIO_SIZE) {
+            console.warn(`⚠️ AŞIRI BÜYÜK SES VERİSİ ENGELLENDİ: ${data.length} byte`);
+            return;
+        }
+
         broadcastAudio(data, ws);
     });
 
