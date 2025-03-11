@@ -40,23 +40,23 @@ const ws_1 = __importStar(require("ws"));
 const os_1 = __importDefault(require("os"));
 const PORT = process.env.PORT || 3000;
 const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB parça (chunk) boyutu
+// İstediğiniz MIME türünü ortam değişkeni ile ayarlayabilirsiniz.
+// Örneğin: AUDIO_MIME_TYPE=audio/ogg node server.js
+const MIME_TYPE = process.env.AUDIO_MIME_TYPE || "audio/webm";
 const wss = new ws_1.WebSocketServer({ port: Number(PORT) });
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
-// Bağlı istemcilerin tutulduğu set
 const clients = new Set();
 wss.on("connection", (ws) => {
     clients.add(ws);
     console.log(`🚀 Yeni istemci bağlandı! (Toplam: ${clients.size})`);
     ws.on("message", (data) => {
-        // Gelen veri Buffer tipinde
         console.log(`🎤 Gelen ses verisi. Boyut: ${data.length} byte`);
-        // Ses verisi çok büyükse engelle
         if (data.length > MAX_AUDIO_SIZE) {
             console.warn(`⚠️ AŞIRI BÜYÜK SES VERİSİ ENGELLENDİ: ${data.length} byte`);
             return;
         }
-        // WebM formatındaki Buffer'ı Base64'e çevir
-        const base64Audio = `data:audio/webm;base64,${data.toString("base64")}`;
+        // Gelen Buffer'ı MIME türüne uygun Base64 formatına çeviriyoruz
+        const base64Audio = `data:${MIME_TYPE};base64,${data.toString("base64")}`;
         // Diğer istemcilere gönder
         broadcastAudio(base64Audio, ws);
     });
@@ -70,13 +70,11 @@ wss.on("connection", (ws) => {
 });
 function broadcastAudio(audioData, sender) {
     for (const client of clients) {
-        // Aynı gönderen istemciye geri yollamamak için filtre
         if (client !== sender && client.readyState === ws_1.default.OPEN) {
             client.send(audioData);
         }
     }
 }
-// İsteğe bağlı: Sunucu IP adresini konsolda göstermek
 function getServerIP() {
     const interfaces = os_1.default.networkInterfaces();
     for (const iface of Object.values(interfaces)) {
