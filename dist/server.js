@@ -39,21 +39,25 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const ws_1 = __importStar(require("ws"));
 const os_1 = __importDefault(require("os"));
 const PORT = process.env.PORT || 3000;
-const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB ses paketi kabul edilecek
+const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB parça (chunk) boyutu
 const wss = new ws_1.WebSocketServer({ port: Number(PORT) });
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
-const clients = new Set(); // Bağlı istemciler
-wss.on("connection", (ws, req) => {
+// Bağlı istemcilerin tutulduğu set
+const clients = new Set();
+wss.on("connection", (ws) => {
     clients.add(ws);
     console.log(`🚀 Yeni istemci bağlandı! (Toplam: ${clients.size})`);
     ws.on("message", (data) => {
+        // Gelen veri Buffer tipinde
         console.log(`🎤 Gelen ses verisi. Boyut: ${data.length} byte`);
+        // Ses verisi çok büyükse engelle
         if (data.length > MAX_AUDIO_SIZE) {
             console.warn(`⚠️ AŞIRI BÜYÜK SES VERİSİ ENGELLENDİ: ${data.length} byte`);
             return;
         }
-        // Veriyi Base64 formatına çevir
+        // WebM formatındaki Buffer'ı Base64'e çevir
         const base64Audio = `data:audio/webm;base64,${data.toString("base64")}`;
+        // Diğer istemcilere gönder
         broadcastAudio(base64Audio, ws);
     });
     ws.on("close", () => {
@@ -64,16 +68,16 @@ wss.on("connection", (ws, req) => {
         console.error(`⚠️ Hata oluştu: ${err.message}`);
     });
 });
-// 📌 Gelen ses verisini Base64 olarak diğer istemcilere ileten fonksiyon
-const broadcastAudio = (audioData, sender) => {
+function broadcastAudio(audioData, sender) {
     for (const client of clients) {
+        // Aynı gönderen istemciye geri yollamamak için filtre
         if (client !== sender && client.readyState === ws_1.default.OPEN) {
             client.send(audioData);
         }
     }
-};
-// 📌 Sunucu IP adresini belirleme fonksiyonu
-const getServerIP = () => {
+}
+// İsteğe bağlı: Sunucu IP adresini konsolda göstermek
+function getServerIP() {
     const interfaces = os_1.default.networkInterfaces();
     for (const iface of Object.values(interfaces)) {
         for (const addr of iface || []) {
@@ -83,5 +87,5 @@ const getServerIP = () => {
         }
     }
     return "localhost";
-};
+}
 console.log(`🌐 WebSocket erişim noktası: ws://${getServerIP()}:${PORT}`);
