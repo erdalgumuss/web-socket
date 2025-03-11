@@ -21,7 +21,9 @@ wss.on("connection", (ws: WebSocket, req) => {
             return;
         }
 
-        broadcastAudio(data, ws);
+        // Eğer gelen veri Base64 değilse Base64'e çevir
+        const base64Audio = `data:audio/webm;base64,${data.toString("base64")}`;
+        broadcastAudio(base64Audio, ws);
     });
 
     ws.on("close", () => {
@@ -35,7 +37,7 @@ wss.on("connection", (ws: WebSocket, req) => {
 });
 
 // 📌 Gelen ses verisini diğer istemcilere ileten fonksiyon
-const broadcastAudio = (audioData: Buffer, sender: WebSocket) => {
+const broadcastAudio = (audioData: string, sender: WebSocket) => {
     for (const client of clients) {
         if (client !== sender && client.readyState === WebSocket.OPEN) {
             client.send(audioData);
