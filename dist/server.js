@@ -39,40 +39,38 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const ws_1 = __importStar(require("ws"));
 const os_1 = __importDefault(require("os"));
 const PORT = process.env.PORT || 3000;
+const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB ses paketi kabul edilecek
 const wss = new ws_1.WebSocketServer({ port: Number(PORT) });
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
-const clients = new Map(); // Map ile istemcileri IP'ye bağlıyoruz.
+const clients = new Set(); // Bağlı istemciler
 wss.on("connection", (ws, req) => {
-    var _a;
-    const clientIP = ((_a = req.socket.remoteAddress) === null || _a === void 0 ? void 0 : _a.replace(/^.*:/, '')) || "Bilinmeyen IP";
-    clients.set(ws, clientIP);
-    console.log(`🚀 Yeni istemci bağlandı! IP: ${clientIP} (Toplam: ${clients.size})`);
-    ws.on("message", (message) => {
-        const msgStr = message.toString(); // Binary olabilme ihtimaline karşı string çeviriyoruz.
-        if (typeof msgStr !== "string" || msgStr.length > 1000) {
-            console.warn(`⚠️ Geçersiz veya uzun mesaj engellendi! IP: ${clientIP}`);
+    clients.add(ws);
+    console.log(`🚀 Yeni istemci bağlandı! (Toplam: ${clients.size})`);
+    ws.on("message", (data) => {
+        console.log(`🎤 Gelen ses verisi. Boyut: ${data.length} byte`);
+        if (data.length > MAX_AUDIO_SIZE) {
+            console.warn(`⚠️ AŞIRI BÜYÜK SES VERİSİ ENGELLENDİ: ${data.length} byte`);
             return;
         }
-        console.log(`📩 Mesaj alındı (${clientIP}): ${msgStr}`);
-        broadcast(`📢 Yeni mesaj: ${msgStr}`, ws);
+        broadcastAudio(data, ws);
     });
     ws.on("close", () => {
         clients.delete(ws);
-        console.log(`❌ Bağlantı kapandı. (Kalan: ${clients.size})`);
+        console.log(`❌ Bağlantı kapandı. (Kalan istemciler: ${clients.size})`);
     });
     ws.on("error", (err) => {
         console.error(`⚠️ Hata oluştu: ${err.message}`);
     });
 });
-// Tüm istemcilere mesaj gönderen yardımcı fonksiyon
-const broadcast = (message, sender) => {
-    for (const [client, ip] of clients) {
-        if (client.readyState === ws_1.default.OPEN && client !== sender) {
-            client.send(message);
+// 📌 Gelen ses verisini diğer istemcilere ileten fonksiyon
+const broadcastAudio = (audioData, sender) => {
+    for (const client of clients) {
+        if (client !== sender && client.readyState === ws_1.default.OPEN) {
+            client.send(audioData);
         }
     }
 };
-// Sunucu IP adresini belirleme fonksiyonu
+// 📌 Sunucu IP adresini belirleme fonksiyonu
 const getServerIP = () => {
     const interfaces = os_1.default.networkInterfaces();
     for (const iface of Object.values(interfaces)) {
