@@ -1,9 +1,11 @@
 import WebSocket, { WebSocketServer } from "ws";
 import os from "os";
-// 
+
 const PORT = process.env.PORT || 3000;
 const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB parça (chunk) boyutu
-
+// İstediğiniz MIME türünü ortam değişkeni ile ayarlayabilirsiniz.
+// Örneğin: AUDIO_MIME_TYPE=audio/ogg node server.js
+const MIME_TYPE = process.env.AUDIO_MIME_TYPE || "audio/webm";
 const wss = new WebSocketServer({ port: Number(PORT) });
 
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
@@ -22,8 +24,11 @@ wss.on("connection", (ws: WebSocket) => {
             return;
         }
 
-        // 📌 Veriyi diğer istemcilere yönlendir
-        broadcastAudio(data, ws);
+        // Gelen Buffer'ı MIME türüne uygun Base64 formatına çeviriyoruz
+        const base64Audio = `data:${MIME_TYPE};base64,${data.toString("base64")}`;
+
+        // Diğer istemcilere gönder
+        broadcastAudio(base64Audio, ws);
     });
 
     ws.on("close", () => {
@@ -36,7 +41,7 @@ wss.on("connection", (ws: WebSocket) => {
     });
 });
 
-function broadcastAudio(audioData: Buffer, sender: WebSocket): void {
+function broadcastAudio(audioData: string, sender: WebSocket): void {
     for (const client of clients) {
         if (client !== sender && client.readyState === WebSocket.OPEN) {
             client.send(audioData);
