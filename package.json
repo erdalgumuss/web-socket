@@ -8,6 +8,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "speaker": "^0.5.5",
     "ws": "^8.18.1"
   },
   "devDependencies": {
