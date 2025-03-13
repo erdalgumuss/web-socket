@@ -2,7 +2,8 @@ import WebSocket, { WebSocketServer } from "ws";
 import os from "os";
 
 const PORT = process.env.PORT || 3000;
-const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB ses paketi boyutu
+const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB parça (chunk) boyutu
+
 const wss = new WebSocketServer({ port: Number(PORT) });
 
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
@@ -21,7 +22,7 @@ wss.on("connection", (ws: WebSocket) => {
             return;
         }
 
-        // 🔥 PCM verisini Base64'e çevirmek yerine doğrudan gönderiyoruz
+        // 📌 Veriyi diğer istemcilere yönlendir
         broadcastAudio(data, ws);
     });
 
@@ -35,7 +36,6 @@ wss.on("connection", (ws: WebSocket) => {
     });
 });
 
-// 📌 Gelen ses verisini diğer istemcilere ilet
 function broadcastAudio(audioData: Buffer, sender: WebSocket): void {
     for (const client of clients) {
         if (client !== sender && client.readyState === WebSocket.OPEN) {
@@ -44,7 +44,6 @@ function broadcastAudio(audioData: Buffer, sender: WebSocket): void {
     }
 }
 
-// 📌 Sunucu IP adresini al
 function getServerIP(): string {
     const interfaces = os.networkInterfaces();
     for (const iface of Object.values(interfaces)) {
