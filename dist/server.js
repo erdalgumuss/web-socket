@@ -40,6 +40,9 @@ const ws_1 = __importStar(require("ws"));
 const os_1 = __importDefault(require("os"));
 const PORT = process.env.PORT || 3000;
 const MAX_AUDIO_SIZE = 65536; // Maksimum 64 KB parça (chunk) boyutu
+// İstediğiniz MIME türünü ortam değişkeni ile ayarlayabilirsiniz.
+// Örneğin: AUDIO_MIME_TYPE=audio/ogg node server.js
+const MIME_TYPE = process.env.AUDIO_MIME_TYPE || "audio/webm";
 const wss = new ws_1.WebSocketServer({ port: Number(PORT) });
 console.log(`✅ WebSocket sunucusu ${PORT} portunda çalışıyor...`);
 const clients = new Set();
@@ -52,8 +55,10 @@ wss.on("connection", (ws) => {
             console.warn(`⚠️ AŞIRI BÜYÜK SES VERİSİ ENGELLENDİ: ${data.length} byte`);
             return;
         }
-        // 📌 Veriyi diğer istemcilere yönlendir
-        broadcastAudio(data, ws);
+        // Gelen Buffer'ı MIME türüne uygun Base64 formatına çeviriyoruz
+        const base64Audio = `data:${MIME_TYPE};base64,${data.toString("base64")}`;
+        // Diğer istemcilere gönder
+        broadcastAudio(base64Audio, ws);
     });
     ws.on("close", () => {
         clients.delete(ws);
