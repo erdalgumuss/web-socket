@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        #messages { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: scroll; }
+        #inputBox { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h2>WebSocket İstemcisi</h2>
+    <div id="messages"></div>
+    <div id="inputBox">
+        <input type="text" id="messageInput" placeholder="Mesajınızı yazın...">
+        <button onclick="sendMessage()">Gönder</button>
+    </div>
+
+    <script>
+        let ws;
+        let reconnectInterval = 3000;
+
+        function connectWebSocket() {
+            ws = new WebSocket("ws://localhost:3000");
+            
+            ws.onopen = () => {
+                console.log("✅ WebSocket bağlantısı kuruldu! (ws://localhost:3000)");
+                addMessage("✅ Bağlantı kuruldu! (ws://localhost:3000)");
+            };
+            
+            ws.onmessage = (event) => {
+                console.log("📩 Yeni mesaj:", event.data);
+                addMessage(`📩 ${event.data}`);
+            };
+            
+            ws.onclose = () => {
+                console.log("❌ Bağlantı kapandı! Yeniden bağlanıyor...");
+                addMessage("❌ Bağlantı kapandı! Yeniden bağlanıyor...");
+                setTimeout(connectWebSocket, reconnectInterval);
+            };
+            
+            ws.onerror = (error) => {
+                console.error("⚠️ WebSocket hatası:", error);
+            };
+        }
+
+        function sendMessage() {
+            const message = document.getElementById("messageInput").value;
+            if (message && ws.readyState === WebSocket.OPEN) {
+                ws.send(message);
+                addMessage(`📤 ${message}`);
+                document.getElementById("messageInput").value = "";
+            } else {
+                addMessage("⚠️ WebSocket bağlantısı kapalı, mesaj gönderilemedi.");
+            }
+        }
+
+        function addMessage(text) {
+            const messagesDiv = document.getElementById("messages");
+            const messageElement = document.createElement("div");
+            messageElement.textContent = text;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        connectWebSocket();
+    </script>
+</body>
+</html>
