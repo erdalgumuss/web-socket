@@ -23,7 +23,7 @@
         let reconnectInterval = 3000;
 
         function connectWebSocket() {
-            ws = new WebSocket("ws://localhost:3000");
+            ws = new WebSocket("ws://172.20.10.3:3000");
             
             ws.onopen = () => {
                 console.log("✅ WebSocket bağlantısı kuruldu! (ws://localhost:3000)");
